@@ -6,6 +6,7 @@ Created on 2021/1/14 15:56
 @author: LT
 """
 import requests
+import json
 
 
 class ContentTypeDisposition(object):
@@ -46,9 +47,9 @@ class ContentTypeDisposition(object):
         :return: requests.models.Response
         """
         if not isinstance(self.data, dict):     # 判断data是否是字典格式
-            raise Exception("multipart/form-data参数错误，data参数应为dict类型")
+            raise Exception("参数错误，data参数应为dict类型")
         else:   # 正常执行
-            res = requests.request("POST", url, data=self.__dispatcher().encode('utf-8'), headers=self.headers, )
+            res = requests.request("POST", url, data=self.__dispatcher(), headers=self.headers, )
         return res
 
     def __content_type_multipart_form_data(self):
@@ -67,23 +68,23 @@ class ContentTypeDisposition(object):
         for key, value in self.data.items():
             all_str += join_str.format(boundary, key, value)
         final_str = all_str + end_str
-        final_str = final_str.replace("\'", "\"")
-        print(final_str)
+        final_str = final_str.replace("\'", "\"")   # 必不能缺失
+        print(final_str)    # 可在正式用的时候注释掉，出问题的时候打开
 
         return final_str
 
     def __dispatcher(self):
         """
-        调度员——用来识别格式，然后发给各个私有方法对应处理的方法
+        调度员——用来识别格式，然后发给对应处理的私有方法
         """
         if "content-type" in self.headers:
             fd_val = str(self.headers["content-type"])
             if "boundary" in fd_val:
                 # 返回真正的data
-                data = self.__content_type_multipart_form_data()
+                data = self.__content_type_multipart_form_data().encode('utf-8')    # encode只能用在string上
             elif "json" in fd_val:
-                # json格式的请求体只用把json内容，也就是data直接放进去就好了啊，json的重点是分析哪些是要传的参数罢了
-                data = self.data
+                # json的重点是分析哪些是要传的参数罢了
+                data = json.dumps(self.data)    # json格式的需要用这种形式处理一下，需要dump成string
             else:
                 raise Exception("multipart/form-data头信息错误，请检查content-type key是否包含boundary")
         else:
@@ -107,7 +108,7 @@ class ContentTypeDisposition(object):
 
     def request_method_stationdetail_deletedevice(self):
         """
-        场站信息中添加设备信息用的请求
+        场站信息中删除设备用的请求
         """
         url = self.URL['StationConfig']['deletedevice']
         return self.__post(url)
@@ -221,7 +222,73 @@ class Data(object):
     @staticmethod
     def edge_getallboxinfo(siteid):  # 获得edge中盒子信息
         data = {
-            'siteid': siteid,
+            'siteid': siteid,   # 这个i必须小写
             'type': 0,
         }
+        return data
+
+    @staticmethod
+    def edge_addbox(siteId, boxName, boxSN):  # 添加盒子
+        """
+        edge接入中新建一个盒子
+        :param siteId: 外界传入站点的siteID
+        :param boxName: 盒子名字，一般采取IP加盒子，如192.168.9.133盒子
+        :param boxSN: 端口号对应的SN号
+        :return: dict
+        """
+        data = {
+            "siteId": siteId,   # 鬼鬼，这个键的I必须大写
+            "boxName": boxName,
+            "boxSN": boxSN,
+            "deviceList": []    # 新建盒子时候默认设备列表为空
+        }
+        return data
+
+    @staticmethod
+    def edge_addcollect(siteId, collectname, ip, portnum):  # 添加连接，与盒子无关，与siteID有关
+        """
+        edge接入中添加一个连接
+        :param siteId: 场站的siteID
+        :param collectname: 连接名字
+        :param ip: 连接用到的ip
+        :param portnum: 连接用到的portnum
+        :return:
+        """
+        data = {
+            "siteid": siteId,  # 这个键的i必须小写
+            "collect": {
+                "attributes": {
+                    "name": collectname, "connIP": f"{ip}:{portnum}", "connType": "TCP_SVR",
+                    "KEEP_ALIVE": "true"}, "collectType": "0"},     # 之前KEEP_ALIVE处用的布尔True，被证明是错误的
+            "devicetemplates": []   # 新建连接时，设备模板列表默认为空
+        }
+        return data
+
+    @staticmethod
+    def edge_adddevices(siteId, boxId, objectID, collectId, modbus, manufacturer):  # 在已有的连接中勾选之前在场站信息中添加过的设备
+        modbus = int(modbus)
+        if '水电' in manufacturer and modbus != 1:
+            AI = "%d-%d" % (91 * (modbus - 1), 91 * modbus - 1)
+            DI = "%d-%d" % (modbus, modbus)
+        elif modbus != 1:
+            AI = '%d-%d' % (78 * (modbus - 1), 78 * modbus - 1)
+            DI = '%d-%d' % (4 * modbus - 3, 4 * modbus)
+        else:
+            AI = "-1"
+            DI = "-1"
+        data = {"siteId": siteId, "boxId": boxId,
+                "attachList": [objectID],
+                "deviceConfList": [{"attributes": {
+                    "logicalID": modbus, "realPointOffset": 3, "realPointOffset_0": AI, "realPointOffset_1": DI,
+                    "realPointOffset_2": "-1"}, "deviceId": "4142", "cimUuid": objectID,
+                    "collectId": collectId}], "detachList": []}
+        return data
+
+    @staticmethod
+    def edge_publishbox(siteid, boxid):  # 点击发布就好了哦
+        data = {
+            "siteid": siteid,
+            "boxid": boxid,
+        }
+
         return data
