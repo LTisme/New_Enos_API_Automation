@@ -1,0 +1,4 @@
+api_logging.log
+data.json
+data.xlsx
+*__pycache__*
