@@ -11,7 +11,12 @@ import json
 
 class ContentTypeDisposition(object):
     """用来自动识别请求头中的content-type类型，并处理所带的请求体数据，以让最后request有个最简洁的传参方式"""
-    def __init__(self, data_, headers_):
+    def __init__(self, data_=None, headers_=None):
+        """
+        将输入的请求头与请求体作为属性
+        :param data_: 请求体，默认为None
+        :param headers_: 请求头，默认为None
+        """
         self.boundary = '----WebKitFormBoundary3wf0kPKxFBnmf0gQ'     # Boundary是得有，但又不需要那么严谨的东西，有这个格式就行
         self.data = data_
         self.headers = headers_
@@ -35,6 +40,8 @@ class ContentTypeDisposition(object):
                 'addcollect': 'https://portal-lywz1.eniot.io/configuration/rest/access/addcollect',
                 # 在对应盒子的对应连接下添加设备
                 'adddevices': 'https://portal-lywz1.eniot.io/configuration/rest/access/adddevices',
+                # 获得最新的设备模板
+                'getalldevicetypes': 'https://portal-lywz1.eniot.io/configuration/rest/access/getalldevicetypes',
                 # 发布
                 'publishbox': 'https://portal-lywz1.eniot.io/configuration/rest/access/publishbox',
             }
@@ -44,11 +51,13 @@ class ContentTypeDisposition(object):
         """
         每个post方法都要用到的私有方法
         :param url: 对应方法的api
-        :return: requests.models.Response
+        :return: requests.models.Response 即返回response请求
         """
-        if not isinstance(self.data, dict):     # 判断data是否是字典格式
-            raise Exception("参数错误，data参数应为dict类型")
-        else:   # 正常执行
+        if not isinstance(self.data, dict) and self.data is not None:     # 判断data是否是字典格式
+            raise Exception("参数错误，data参数应为dict类型，或者为NoneType类型")
+        elif self.data is None:   # 不带请求体来post执行
+            res = requests.request("POST", url, headers=self.headers, )
+        else:   # 正常执行字典格式的data请求体
             res = requests.request("POST", url, data=self.__dispatcher(), headers=self.headers, )
         return res
 
@@ -148,6 +157,11 @@ class ContentTypeDisposition(object):
         url = self.URL['EdgeAccess']['adddevices']
         return self.__post(url)
 
+    def request_method_edge_getalldevicetypes(self):
+        """获得最新的设备模板的对应ID"""
+        url = self.URL['EdgeAccess']['getalldevicetypes']
+        return self.__post(url)
+
     def request_method_edge_publishbox(self):
         """
         Edge接入中点击发布
@@ -165,6 +179,13 @@ class Headers(object):
 
         self.headers_json = {
             'content-type': 'application/json'
+        }
+
+        self.headers_query_templates = {
+            # 这是shujun.wu这个账号对应的各个参数，无须修改；若是TSKJ的名字，则需要换成其对应的各个参数
+            # 请求设备模板，无需content-type，因为不发请求体，url会自动识别的
+            'eos_auth': json.dumps({"uid": "35e35736-ce9a-4d1b-b2d5-14ea8c279353", "token": "IAM_s16107615692591",
+                                    "orgCode": "1859febe5ce70000", "userName": "shujun.wu", "locale": "zh-CN"})
         }
 
 
@@ -265,7 +286,7 @@ class Data(object):
         return data
 
     @staticmethod
-    def edge_adddevices(siteId, boxId, objectID, collectId, modbus, manufacturer):  # 在已有的连接中勾选之前在场站信息中添加过的设备
+    def edge_adddevices(siteId, boxId, objectID, collectId, modbus, manufacturer, deviceId):  # 在已有的连接中勾选之前在场站信息中添加过的设备
         modbus = int(modbus)
         if '水电' in manufacturer and modbus != 1:
             AI = "%d-%d" % (91 * (modbus - 1), 91 * modbus - 1)
@@ -280,7 +301,7 @@ class Data(object):
                 "attachList": [objectID],
                 "deviceConfList": [{"attributes": {
                     "logicalID": modbus, "realPointOffset": 3, "realPointOffset_0": AI, "realPointOffset_1": DI,
-                    "realPointOffset_2": "-1"}, "deviceId": "4142", "cimUuid": objectID,
+                    "realPointOffset_2": "-1"}, "deviceId": deviceId, "cimUuid": objectID,
                     "collectId": collectId}], "detachList": []}
         return data
 

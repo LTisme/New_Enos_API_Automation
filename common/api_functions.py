@@ -9,6 +9,7 @@ import os
 import openpyxl
 import pprint
 import json
+import re
 
 
 def extract_data_into_a_json():
@@ -16,31 +17,31 @@ def extract_data_into_a_json():
     wb = openpyxl.load_workbook('data.xlsx')
     sht = wb['Sheet1']
 
-    data_list = []      # 字典列表
-    info_list = []      # 信息列表，后续还得根据情况是否需要新创建
+    data_list = []  # 字典列表
+    info_list = []  # 信息列表，后续还得根据情况是否需要新创建
 
-    STATION = ""    # 用来暂存空站名前最新的站名
-    STATION_ID = ""     # 用来存最新的站ID
-    PORT = ""   # 用来存最新的端口号
-    TEMP = ""   # 用来判断是否是同一个场站，它有一个暂存量的作用
-    for row in range(2, sht.max_row + 1):       # 要包括进excel表里的最后一行
+    STATION = ""  # 用来暂存空站名前最新的站名
+    STATION_ID = ""  # 用来存最新的站ID
+    PORT = ""  # 用来存最新的端口号
+    TEMP = ""  # 用来判断是否是同一个场站，它有一个暂存量的作用
+    for row in range(2, sht.max_row + 1):  # 要包括进excel表里的最后一行
         """从里到外层层脱出"""
-        if sht['C' + str(row)].value is not None and row >= 2 and sht['A' + str(row)].value is not None and\
-                sht['J' + str(row)].value is not None:   # 如果设备名称不为空，站名不为空,端口号不为空
-            STATION = sht['A' + str(row)].value     # 更新STATION
+        if sht['C' + str(row)].value is not None and row >= 2 and sht['A' + str(row)].value is not None and \
+                sht['J' + str(row)].value is not None:  # 如果设备名称不为空，站名不为空,端口号不为空
+            STATION = sht['A' + str(row)].value  # 更新STATION
             STATION_ID = sht['B' + str(row)].value  # 更新STATION_ID
-            PORT = sht['J' + str(row)].value        # 更新PORT
-            device_name = sht['C' + str(row)].value     # 设备名
-            modbus = sht['D' + str(row)].value      # 公共地址
-            capacity = sht['E' + str(row)].value    # 容量
-            rated_current = sht['F' + str(row)].value   # 额定电流
-            CT = sht['G' + str(row)].value      # CT变比
-            PT = sht['H' + str(row)].value      # PT变比
-            manufacturer = sht['I' + str(row)].value    # 厂家名字
-            port_num = sht['J' + str(row)].value    # 端口号
+            PORT = sht['J' + str(row)].value  # 更新PORT
+            device_name = sht['C' + str(row)].value  # 设备名
+            modbus = sht['D' + str(row)].value  # 公共地址
+            capacity = sht['E' + str(row)].value  # 容量
+            rated_current = sht['F' + str(row)].value  # 额定电流
+            CT = sht['G' + str(row)].value  # CT变比
+            PT = sht['H' + str(row)].value  # PT变比
+            manufacturer = sht['I' + str(row)].value  # 厂家名字
+            port_num = sht['J' + str(row)].value  # 端口号
             # >>>>>>>>>>>>>>>>>>>>>>>基础信息分隔符
-            site_ID = sht['B' + str(row)].value     # siteID
-            station_name = sht['A' + str(row)].value    # 站点名字
+            site_ID = sht['B' + str(row)].value  # siteID
+            station_name = sht['A' + str(row)].value  # 站点名字
             # >>>>>>>>>>>>>>>>>>>>>>>
             # 根据新信息创建一个新字典
             info_list_elem = {'device_name': device_name, 'modbus': modbus, 'capacity': capacity,
@@ -51,10 +52,10 @@ def extract_data_into_a_json():
                 info_list.append(info_list_elem)
             else:
                 info_list.append(info_list_elem)
-        elif sht['A' + str(row)].value is None and row <= sht.max_row:   # 若站名为空，且不大于最大行数
-            if sht['J' + str(row)].value is not None:     # 如果站名为空，但端口号不为空
-                PORT = sht['J' + str(row)].value    # 更新PORT
-                device_name = sht['C' + str(row)].value     # 设备名
+        elif sht['A' + str(row)].value is None and row <= sht.max_row:  # 若站名为空，且不大于最大行数
+            if sht['J' + str(row)].value is not None:  # 如果站名为空，但端口号不为空
+                PORT = sht['J' + str(row)].value  # 更新PORT
+                device_name = sht['C' + str(row)].value  # 设备名
                 modbus = sht['D' + str(row)].value  # 公共地址
                 capacity = sht['E' + str(row)].value  # 容量
                 rated_current = sht['F' + str(row)].value  # 额定电流
@@ -75,7 +76,7 @@ def extract_data_into_a_json():
                     info_list.append(info_list_elem)
                 else:
                     info_list.append(info_list_elem)
-            elif sht['J' + str(row)].value is None:     # 如果站名为空，端口号也为空
+            elif sht['J' + str(row)].value is None:  # 如果站名为空，端口号也为空
                 device_name = sht['C' + str(row)].value  # 设备名
                 modbus = sht['D' + str(row)].value  # 公共地址
                 capacity = sht['E' + str(row)].value  # 容量
@@ -111,7 +112,7 @@ def extract_data_into_a_json():
     # 把结果保存为json文件
 
     with open('data.json', 'w', encoding='UTF-8') as file_obj:
-        json.dump(data_list, file_obj, ensure_ascii=False)      # ensure_ascii=False 用来存储为真正的中文
+        json.dump(data_list, file_obj, ensure_ascii=False)  # ensure_ascii=False 用来存储为真正的中文
 
 
 def judgement(port_num):
@@ -120,12 +121,12 @@ def judgement(port_num):
     :param port_num: 传入的端口号
     :return: IP,SN 都是str型的
     """
-    port_num = int(port_num)    # 先将传入的参数进行字符化处理
-    if (30002 <= port_num <= 30200) or (30402 <= port_num <= 30500)\
+    port_num = int(port_num)  # 先将传入的参数进行字符化处理
+    if (30002 <= port_num <= 30200) or (30402 <= port_num <= 30500) \
             or (30501 <= port_num <= 30600) or (30801 <= port_num <= 31200):
         ip = '10.65.26.143'
         sn = 'de221685-5460-4c50-80ff-3d322eb5b019'
-    elif (30201 <= port_num <= 30400) or (30601 <= port_num <= 30700)\
+    elif (30201 <= port_num <= 30400) or (30601 <= port_num <= 30700) \
             or (31201 <= port_num <= 32000):
         ip = '10.65.26.144'
         sn = '90829856-5781-41fe-a6d4-d1ec5f16e548'
@@ -207,5 +208,2366 @@ def which_link(port_num, port_list, start_num=0):
     return "104转发%d" % X
 
 
+def which_template(json_dict, manufacturer, CT, PT):
+    """
+    用输入的参数结合正则判定式来匹配到目标模板，当然要考虑到匹配不成功的情况该如何处理
+    :param json_dict: 输入的json字典格式的数据
+    :param manufacturer: 厂家信息，不可或缺
+    :param CT: 电流互感器变比
+    :param PT: 电压互感器变比
+    :return: str
+    """
+    templates = []
+    for elem in json_dict['data']:
+        templates.append((elem['id'], elem['deviceName']))  # 把每个模板名与其对应的id形成一个元组放到列表中
+    print(templates)
+    if '南德电气' in manufacturer and PT != '1':
+        # 南德电气20kv_PT200/1_CT600/5
+        REGEX = re.compile(r'^(.*)(%s)(.*)(%s)(.*)(%s)$' % ('南德电气', PT, CT))  # 南德电气用的正则
+        print('1')
+    elif ('深圳中电' in manufacturer or '创力' in manufacturer or '南德电气' in manufacturer) and PT == '1' and CT != '1':
+        # 创力目前没有带PT变比，深圳中电与创力用的同一个模板
+        # 创力104转发YC78_1000/5
+        REGEX = re.compile(r'^(.*)(%s)(.*)(_%s)$' % ('创力', CT))  # 带下划线可以区分2500/5与500/5的模糊
+        print('2')
+    elif '深圳中电' in manufacturer and CT == '1':
+        # 深圳中电CT为1的，就得选温州电管家104转发YC78
+        REGEX = re.compile(r'^温州电管家104转发YC78$')
+        print('3')
+    elif '佳和' in manufacturer and PT != '1':  # 佳和带PT的变比
+        # 温州佳和104转发YC91_100/5_PT100/1
+        REGEX = re.compile(r'^(.*)(%s)(.*)(_%s)(.*)(_PT%s)$' % ('佳和', CT, PT))
+        print('4')
+    elif ('佳和' in manufacturer and '水电' not in manufacturer) and PT == '1':  # 佳和不带PT的变比，最好带一个非贪心匹配，这样可以不带入水电后缀
+        # 温州佳和104转发YC91_100/5
+        REGEX = re.compile(r'^(.*)(%s)(.*)(_%s)$' % ('佳和', CT))
+        print('5')
+    elif '水电' in manufacturer and PT == '1':    # 水电目前只有佳和水电才有
+        # 温州佳和104转发YC91_500/5_水电
+        REGEX = re.compile(r'^(.*)(%s)(.*)(_%s)(.*)(_水电)$' % ('佳和', CT))
+        print('6')
+    else:
+        print(f'匹配失败')
+        return 'failed'  # 正则式匹配失败，需要外界判断
+    final = ""
+    for target in templates:
+        if REGEX.match(target[1]):
+            final = str(target[0])  # 若成功则返回对应的id，也就是F12option中的value值
+            break
+    if final != "":
+        print(f'匹配成功')
+        return final
+    else:
+        print(f'匹配失败')
+        return 'failed'
+
+
 if __name__ == '__main__':
-    extract_data_into_a_json()
+    test = {
+        "retCode": 10000,
+        "errMsg": "",
+        "data": [
+            {
+                "id": 4109,
+                "deviceName": "温州小微园区23YC",
+                "brand": "极熵",
+                "model": "jishang_23",
+                "innerVer": "v1.0",
+                "driverId": 11777,
+                "protocolId": 1257,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14046",
+                    "14047"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 377,
+                "parentDomainId": 0,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1565684625000,
+                "updatedDate": 1584521828000
+            },
+            {
+                "id": 4112,
+                "deviceName": "温州小微园区24YC",
+                "brand": "极熵",
+                "model": "jishang_24",
+                "innerVer": "v1.0",
+                "driverId": 11776,
+                "protocolId": 1257,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14046",
+                    "14048"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 377,
+                "parentDomainId": 0,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1567735360000,
+                "updatedDate": 1584518069000
+            },
+            {
+                "id": 4114,
+                "deviceName": "温州电管家104转发YC78",
+                "brand": "电管家",
+                "model": "温州电管家YC78",
+                "innerVer": "v1.0",
+                "driverId": 11911,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14238"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1568603158000,
+                "updatedDate": 1603433601000
+            },
+            {
+                "id": 4123,
+                "deviceName": "温州佳和104转发YC91",
+                "brand": "佳和",
+                "model": "温州佳和YC91",
+                "innerVer": "v1.0",
+                "driverId": 11726,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14078"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1572833573000,
+                "updatedDate": 1576050330000
+            },
+            {
+                "id": 4130,
+                "deviceName": "温州墨熵104转发YC110",
+                "brand": "墨熵",
+                "model": "温州墨熵YC110",
+                "innerVer": "v1.0",
+                "driverId": 11709,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14079",
+                    "14094"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1573094044000,
+                "updatedDate": 1573203075000
+            },
+            {
+                "id": 4135,
+                "deviceName": "温州佳和104转发YC91_800/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_800/5",
+                "innerVer": "v1.0",
+                "driverId": 11818,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14167",
+                    "14159"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1574905445000,
+                "updatedDate": 1592915255000
+            },
+            {
+                "id": 4136,
+                "deviceName": "温州佳和104转发YC91_400/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_400/5",
+                "innerVer": "v1.0",
+                "driverId": 11804,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14106",
+                    "14156"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1574905586000,
+                "updatedDate": 1592021731000
+            },
+            {
+                "id": 4137,
+                "deviceName": "温州佳和104转发YC91_500/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_500/5",
+                "innerVer": "v1.0",
+                "driverId": 11808,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14105",
+                    "14160"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1574905771000,
+                "updatedDate": 1592022110000
+            },
+            {
+                "id": 4138,
+                "deviceName": "温州佳和104转发YC91_600/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_600/5",
+                "innerVer": "v1.0",
+                "driverId": 11820,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14168",
+                    "14147"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576130942000,
+                "updatedDate": 1592920411000
+            },
+            {
+                "id": 4139,
+                "deviceName": "温州佳和104转发YC91_100/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_100/5",
+                "innerVer": "v1.0",
+                "driverId": 11794,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14146"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576131245000,
+                "updatedDate": 1592020816000
+            },
+            {
+                "id": 4140,
+                "deviceName": "温州佳和104转发YC91_1000/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_1000/5",
+                "innerVer": "v1.0",
+                "driverId": 11816,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14165",
+                    "14142"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576132724000,
+                "updatedDate": 1592725492000
+            },
+            {
+                "id": 4141,
+                "deviceName": "温州佳和104转发YC91_75/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_75/5",
+                "innerVer": "v1.0",
+                "driverId": 11823,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14170"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576132783000,
+                "updatedDate": 1595035248000
+            },
+            {
+                "id": 4142,
+                "deviceName": "温州佳和104转发YC91_50/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_50/5",
+                "innerVer": "v1.0",
+                "driverId": 11806,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14158"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576132840000,
+                "updatedDate": 1592021880000
+            },
+            {
+                "id": 4143,
+                "deviceName": "温州佳和104转发YC91_150/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_150/5",
+                "innerVer": "v1.0",
+                "driverId": 11792,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14144"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576132883000,
+                "updatedDate": 1592020371000
+            },
+            {
+                "id": 4144,
+                "deviceName": "温州佳和104转发YC91_200/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_200/5",
+                "innerVer": "v1.0",
+                "driverId": 11793,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14145"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576132936000,
+                "updatedDate": 1592020433000
+            },
+            {
+                "id": 4149,
+                "deviceName": "温州佳和104转发YC91_2000/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_2000/5",
+                "innerVer": "v1.0",
+                "driverId": 11803,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14155"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576931156000,
+                "updatedDate": 1592021589000
+            },
+            {
+                "id": 4150,
+                "deviceName": "温州佳和104转发YC91_300/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_300/5",
+                "innerVer": "v1.0",
+                "driverId": 11805,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14157"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576931380000,
+                "updatedDate": 1592021798000
+            },
+            {
+                "id": 4151,
+                "deviceName": "温州佳和104转发YC91_1500/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_1500/5",
+                "innerVer": "v1.0",
+                "driverId": 11802,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14154"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1576993839000,
+                "updatedDate": 1592021515000
+            },
+            {
+                "id": 4152,
+                "deviceName": "温州佳和104转发YC91_1200/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_1200/5",
+                "innerVer": "v1.0",
+                "driverId": 11801,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14153"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1577023522000,
+                "updatedDate": 1592021405000
+            },
+            {
+                "id": 4153,
+                "deviceName": "温州佳和104转发YC91_250/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_250/5",
+                "innerVer": "v1.0",
+                "driverId": 11800,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14152"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1577098246000,
+                "updatedDate": 1592021323000
+            },
+            {
+                "id": 4154,
+                "deviceName": "温州佳和104转发YC91_2500/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_2500/5",
+                "innerVer": "v1.0",
+                "driverId": 11799,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14151"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1577115261000,
+                "updatedDate": 1592021219000
+            },
+            {
+                "id": 4157,
+                "deviceName": "温州佳和104转发YC91_1600/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_1600/5",
+                "innerVer": "v1.0",
+                "driverId": 11798,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14150"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1577177975000,
+                "updatedDate": 1592021150000
+            },
+            {
+                "id": 4158,
+                "deviceName": "modbus-rtu测试",
+                "brand": "测试",
+                "model": "测试",
+                "innerVer": "v1.0",
+                "driverId": 11890,
+                "protocolId": 1270,
+                "driverName": "",
+                "driverProto": "ModbusRTU",
+                "confPathList": [
+                    "14125",
+                    "14126"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 377,
+                "parentDomainId": 0,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1577271625000,
+                "updatedDate": 1599549346000
+            },
+            {
+                "id": 4160,
+                "deviceName": "50KW光伏逆变器",
+                "brand": "光伏逆变器",
+                "model": "50KW光伏逆变器",
+                "innerVer": "v1.0",
+                "driverId": 11772,
+                "protocolId": 1271,
+                "driverName": "",
+                "driverProto": "ModbusRTU",
+                "confPathList": [
+                    "14129",
+                    "14132"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 234,
+                "domainId": 418,
+                "parentDomainId": 0,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1577277216000,
+                "updatedDate": 1578020001000
+            },
+            {
+                "id": 4161,
+                "deviceName": "温州佳和104转发YC91_3000/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_3000/5",
+                "innerVer": "v1.0",
+                "driverId": 11797,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14149"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1579401972000,
+                "updatedDate": 1592021071000
+            },
+            {
+                "id": 4163,
+                "deviceName": "温州电管家104转发YC78_copy",
+                "brand": "电管家",
+                "model": "温州电管家YC78_1587778048857",
+                "innerVer": "v1.0",
+                "driverId": 11780,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14134",
+                    "14072"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1587778048000,
+                "updatedDate": 1587778255000
+            },
+            {
+                "id": 4164,
+                "deviceName": "温州佳和104转发YC91_70/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_70/5",
+                "innerVer": "v1.0",
+                "driverId": 11796,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14148"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1588227488000,
+                "updatedDate": 1592020998000
+            },
+            {
+                "id": 4165,
+                "deviceName": "温州电管家104转发YC79/78",
+                "brand": "电管家",
+                "model": "温州电管家YC78_1591841500785",
+                "innerVer": "v1.0",
+                "driverId": 11783,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14100",
+                    "14072"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1591841500000,
+                "updatedDate": 1591841500000
+            },
+            {
+                "id": 4166,
+                "deviceName": "温州佳和104转发YC91_5000/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_5000/5",
+                "innerVer": "v1.0",
+                "driverId": 11810,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14105",
+                    "14161"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1592099702000,
+                "updatedDate": 1592099804000
+            },
+            {
+                "id": 4167,
+                "deviceName": "温州佳和104转发YC91_750/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_750/5",
+                "innerVer": "v1.0",
+                "driverId": 11813,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14105",
+                    "14163"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1592188553000,
+                "updatedDate": 1592202116000
+            },
+            {
+                "id": 4168,
+                "deviceName": "温州佳和104转发YC91_4000/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_4000/5",
+                "innerVer": "v1.0",
+                "driverId": 11815,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14106",
+                    "14164"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1592208730000,
+                "updatedDate": 1592208779000
+            },
+            {
+                "id": 4169,
+                "deviceName": "创力104转发YC78_800/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_800/5",
+                "innerVer": "v1.0",
+                "driverId": 11881,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14217"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1594608096000,
+                "updatedDate": 1598258360000
+            },
+            {
+                "id": 4170,
+                "deviceName": "创力104转发YC78_4000/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_4000/5",
+                "innerVer": "v1.0",
+                "driverId": 11875,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14211"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1595381811000,
+                "updatedDate": 1598257492000
+            },
+            {
+                "id": 4171,
+                "deviceName": "创力104转发YC78_2000/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_2000/5",
+                "innerVer": "v1.0",
+                "driverId": 11873,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14208"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1595382553000,
+                "updatedDate": 1598254466000
+            },
+            {
+                "id": 4172,
+                "deviceName": "创力104转发YC78_3000/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_3000/5",
+                "innerVer": "v1.0",
+                "driverId": 11874,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14210"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1595382623000,
+                "updatedDate": 1598257287000
+            },
+            {
+                "id": 4173,
+                "deviceName": "创力104转发YC78_400/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_400/5",
+                "innerVer": "v1.0",
+                "driverId": 11880,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14216"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1595465103000,
+                "updatedDate": 1598258291000
+            },
+            {
+                "id": 4174,
+                "deviceName": "创力104转发YC78_1500/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_1500/5",
+                "innerVer": "v1.0",
+                "driverId": 11879,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14215"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1595471387000,
+                "updatedDate": 1598258187000
+            },
+            {
+                "id": 4175,
+                "deviceName": "创力104转发YC78_600/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_600/5",
+                "innerVer": "v1.0",
+                "driverId": 11878,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14214"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1595578550000,
+                "updatedDate": 1598258119000
+            },
+            {
+                "id": 4176,
+                "deviceName": "创力104转发YC78_1000/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_1000/5",
+                "innerVer": "v1.0",
+                "driverId": 11877,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14213"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1596004531000,
+                "updatedDate": 1598258017000
+            },
+            {
+                "id": 4177,
+                "deviceName": "创力104转发YC78_300/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_300/5",
+                "innerVer": "v1.0",
+                "driverId": 11900,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14229"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1596177322000,
+                "updatedDate": 1601169637000
+            },
+            {
+                "id": 4178,
+                "deviceName": "创力104转发YC78_500/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_500/5",
+                "innerVer": "v1.0",
+                "driverId": 11872,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14207"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1596245128000,
+                "updatedDate": 1598251483000
+            },
+            {
+                "id": 4180,
+                "deviceName": "创力104转发YC78_75/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_75/5",
+                "innerVer": "v1.0",
+                "driverId": 11869,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14204"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1596943833000,
+                "updatedDate": 1598238881000
+            },
+            {
+                "id": 4181,
+                "deviceName": "创力104转发YC78_200/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_200/5",
+                "innerVer": "v1.0",
+                "driverId": 11871,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14206"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1597111882000,
+                "updatedDate": 1598251325000
+            },
+            {
+                "id": 4182,
+                "deviceName": "创力104转发YC78_5000/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_5000/5",
+                "innerVer": "v1.0",
+                "driverId": 11870,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14205"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1597115190000,
+                "updatedDate": 1598251237000
+            },
+            {
+                "id": 4183,
+                "deviceName": "温州佳和104转发YC91_6000/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_6000/5",
+                "innerVer": "v1.0",
+                "driverId": 11860,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14168",
+                    "14195"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1597391095000,
+                "updatedDate": 1597391151000
+            },
+            {
+                "id": 4184,
+                "deviceName": "创力104转发YC78_750/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_750/5",
+                "innerVer": "v1.0",
+                "driverId": 11868,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14203"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1597805086000,
+                "updatedDate": 1598238558000
+            },
+            {
+                "id": 4185,
+                "deviceName": "创力104转发YC78_1200/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_1200/5",
+                "innerVer": "v1.0",
+                "driverId": 11867,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14202"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1597809054000,
+                "updatedDate": 1598238414000
+            },
+            {
+                "id": 4186,
+                "deviceName": "创力104转发YC78_1200/5测试",
+                "brand": "创力",
+                "model": "创力104转发YC78_1200/5测试",
+                "innerVer": "v1.0",
+                "driverId": 11866,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14201"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1597996993000,
+                "updatedDate": 1597997811000
+            },
+            {
+                "id": 4187,
+                "deviceName": "极熵进线表模板",
+                "brand": "极熵",
+                "model": "MEA220",
+                "innerVer": "V1.0",
+                "driverId": 11977,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14219",
+                    "14279"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 377,
+                "parentDomainId": 0,
+                "namespace": "1859febe5ce70000",
+                "owner": "JSCS",
+                "createdDate": 1598328254000,
+                "updatedDate": 1606986949000
+            },
+            {
+                "id": 4188,
+                "deviceName": "创力104转发YC78_250/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_250/5",
+                "innerVer": "v1.0",
+                "driverId": 11885,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14220"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1599020141000,
+                "updatedDate": 1599020223000
+            },
+            {
+                "id": 4189,
+                "deviceName": "创力104转发YC78_2500/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_2500/5",
+                "innerVer": "v1.0",
+                "driverId": 11887,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14221"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1599020316000,
+                "updatedDate": 1599020424000
+            },
+            {
+                "id": 4190,
+                "deviceName": "创力104转发YC78_3200/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_3200/5",
+                "innerVer": "v1.0",
+                "driverId": 11889,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14222"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1599447919000,
+                "updatedDate": 1600046902000
+            },
+            {
+                "id": 4191,
+                "deviceName": "创力104转发YC78_100/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_100/5",
+                "innerVer": "v1.0",
+                "driverId": 11892,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14223"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1599735474000,
+                "updatedDate": 1600047087000
+            },
+            {
+                "id": 4192,
+                "deviceName": "创力104转发YC78_150/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_150/5",
+                "innerVer": "v1.0",
+                "driverId": 11894,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14224"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1599735947000,
+                "updatedDate": 1600047238000
+            },
+            {
+                "id": 4194,
+                "deviceName": "温州佳和104转发YC91_30/5",
+                "brand": "佳和",
+                "model": "温州佳和YC91_30/5",
+                "innerVer": "v1.0",
+                "driverId": 11897,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14225"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1600331527000,
+                "updatedDate": 1600331603000
+            },
+            {
+                "id": 4195,
+                "deviceName": "创力104转发YC78_1250/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_1250/5",
+                "innerVer": "v1.0",
+                "driverId": 11899,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14228"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1600658762000,
+                "updatedDate": 1600658903000
+            },
+            {
+                "id": 4197,
+                "deviceName": "温州佳和104转发YC91_600/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_600/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11905,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14168",
+                    "14231"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1601172716000,
+                "updatedDate": 1601173138000
+            },
+            {
+                "id": 4198,
+                "deviceName": "温州佳和104转发YC91_1500/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和YC91_1500/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11904,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14230"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1601172839000,
+                "updatedDate": 1601173075000
+            },
+            {
+                "id": 4199,
+                "deviceName": "温州佳和104转发YC91_1000/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和YC91_1000/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11908,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14232"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1601184821000,
+                "updatedDate": 1601184942000
+            },
+            {
+                "id": 4200,
+                "deviceName": "温州佳和104转发YC91_800/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和YC91_800/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11909,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14233"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1601184839000,
+                "updatedDate": 1601184996000
+            },
+            {
+                "id": 4201,
+                "deviceName": "红外表头YC5_600/5",
+                "brand": "深圳中电",
+                "model": "红外表头YC5_600/5",
+                "innerVer": "v1.0",
+                "driverId": 11910,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14235",
+                    "14234"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1602750110000,
+                "updatedDate": 1602750535000
+            },
+            {
+                "id": 4202,
+                "deviceName": "创力104转发YC78_50/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_50/5",
+                "innerVer": "v1.0",
+                "driverId": 11913,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14239"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1604381793000,
+                "updatedDate": 1604381910000
+            },
+            {
+                "id": 4203,
+                "deviceName": "温州佳和104转发YC91_2000/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和YC91_2000/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11915,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14241"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1604547378000,
+                "updatedDate": 1604547624000
+            },
+            {
+                "id": 4204,
+                "deviceName": "创力104转发YC78_30/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_30/5",
+                "innerVer": "v1.0",
+                "driverId": 11917,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14242"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1604644133000,
+                "updatedDate": 1604644189000
+            },
+            {
+                "id": 4205,
+                "deviceName": "南德电气20kv_PT200/1_CT50/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT50/5",
+                "innerVer": "v1.0",
+                "driverId": 11923,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14247"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1604646022000,
+                "updatedDate": 1605674474000
+            },
+            {
+                "id": 4206,
+                "deviceName": "南德电气20kv_PT200/1_CT30/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT30/5",
+                "innerVer": "v1.0",
+                "driverId": 11922,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14246"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1604646938000,
+                "updatedDate": 1605674453000
+            },
+            {
+                "id": 4207,
+                "deviceName": "南德电气20kv_PT200/1_CT75/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT75/5",
+                "innerVer": "v1.0",
+                "driverId": 11925,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14248"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605599754000,
+                "updatedDate": 1605674503000
+            },
+            {
+                "id": 4208,
+                "deviceName": "南德电气20kv_PT200/1_CT20/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT20/5",
+                "innerVer": "v1.0",
+                "driverId": 11927,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14249"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605600175000,
+                "updatedDate": 1605674381000
+            },
+            {
+                "id": 4209,
+                "deviceName": "南德电气20kv_PT200/1_CT25/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT25/5",
+                "innerVer": "v1.0",
+                "driverId": 11929,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14250"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605600362000,
+                "updatedDate": 1605674415000
+            },
+            {
+                "id": 4210,
+                "deviceName": "南德电气20kv_PT200/1_CT100/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT100/5",
+                "innerVer": "v1.0",
+                "driverId": 11955,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14266"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605600446000,
+                "updatedDate": 1605837568000
+            },
+            {
+                "id": 4211,
+                "deviceName": "南德电气20kv_PT200/1_CT150/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT150/5",
+                "innerVer": "v1.0",
+                "driverId": 11934,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14254"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605660151000,
+                "updatedDate": 1605674595000
+            },
+            {
+                "id": 4212,
+                "deviceName": "南德电气20kv_PT200/1_CT400/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT400/5",
+                "innerVer": "v1.0",
+                "driverId": 11933,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14252"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605662634000,
+                "updatedDate": 1605674556000
+            },
+            {
+                "id": 4213,
+                "deviceName": "南德电气20kv_PT200/1_CT600/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT600/5",
+                "innerVer": "v1.0",
+                "driverId": 11936,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14255"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605662829000,
+                "updatedDate": 1605674641000
+            },
+            {
+                "id": 4214,
+                "deviceName": "南德电气20kv_PT100/1_CT30/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT30/5",
+                "innerVer": "v1.0",
+                "driverId": 11938,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14256"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663018000,
+                "updatedDate": 1605674705000
+            },
+            {
+                "id": 4215,
+                "deviceName": "南德电气20kv_PT100/1_CT50/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT50/5",
+                "innerVer": "v1.0",
+                "driverId": 11940,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14257"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663124000,
+                "updatedDate": 1605674729000
+            },
+            {
+                "id": 4216,
+                "deviceName": "南德电气20kv_PT100/1_CT75/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT75/5",
+                "innerVer": "v1.0",
+                "driverId": 11944,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14259"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663172000,
+                "updatedDate": 1605674744000
+            },
+            {
+                "id": 4217,
+                "deviceName": "南德电气20kv_PT100/1_CT100/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT100/5",
+                "innerVer": "v1.0",
+                "driverId": 11943,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14258"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663233000,
+                "updatedDate": 1605674762000
+            },
+            {
+                "id": 4218,
+                "deviceName": "南德电气20kv_PT100/1_CT150/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT150/5",
+                "innerVer": "v1.0",
+                "driverId": 11946,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14260"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663386000,
+                "updatedDate": 1605674778000
+            },
+            {
+                "id": 4219,
+                "deviceName": "南德电气20kv_PT100/1_CT200/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT200/5",
+                "innerVer": "v1.0",
+                "driverId": 11948,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14261"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663440000,
+                "updatedDate": 1605674792000
+            },
+            {
+                "id": 4220,
+                "deviceName": "南德电气20kv_PT100/1_CT300/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT300/5",
+                "innerVer": "v1.0",
+                "driverId": 11950,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14262"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663488000,
+                "updatedDate": 1605674805000
+            },
+            {
+                "id": 4221,
+                "deviceName": "南德电气20kv_PT100/1_CT400/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT400/5",
+                "innerVer": "v1.0",
+                "driverId": 11952,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14263"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605663529000,
+                "updatedDate": 1605674818000
+            },
+            {
+                "id": 4222,
+                "deviceName": "南德电气20kv_PT200/1_CT40/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT200/1_CT40/5",
+                "innerVer": "v1.0",
+                "driverId": 11954,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14264"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1605745970000,
+                "updatedDate": 1605746069000
+            },
+            {
+                "id": 4223,
+                "deviceName": "温州佳和104转发YC91_400/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和YC91_400/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11957,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14267"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1606272763000,
+                "updatedDate": 1606272853000
+            },
+            {
+                "id": 4224,
+                "deviceName": "温州佳和104转发YC91_500/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_500/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11959,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14268"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1606288354000,
+                "updatedDate": 1606288387000
+            },
+            {
+                "id": 4225,
+                "deviceName": "温州佳和104转发YC91_200/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_200/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11961,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14269"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1606786291000,
+                "updatedDate": 1606786353000
+            },
+            {
+                "id": 4226,
+                "deviceName": "创力104转发YC78_1600/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_1600/5",
+                "innerVer": "v1.0",
+                "driverId": 11963,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14270"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1606788916000,
+                "updatedDate": 1606788978000
+            },
+            {
+                "id": 4227,
+                "deviceName": "测试模板11111",
+                "brand": "极熵",
+                "model": "测试模板11111",
+                "innerVer": "v1.0",
+                "driverId": 11967,
+                "protocolId": 1257,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14272",
+                    "14273"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 377,
+                "parentDomainId": 0,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1606889081000,
+                "updatedDate": 1606960701000
+            },
+            {
+                "id": 4228,
+                "deviceName": "温州电管家104转发YC78_1",
+                "brand": "电管家",
+                "model": "温州电管家YC78_1",
+                "innerVer": "v1.0",
+                "driverId": 11969,
+                "protocolId": 1257,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14274",
+                    "14238"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1606962765000,
+                "updatedDate": 1606962847000
+            },
+            {
+                "id": 4229,
+                "deviceName": "南德电气20kv_PT100/1_CT250/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT250/5",
+                "innerVer": "v1.0",
+                "driverId": 11971,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14275"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1606977266000,
+                "updatedDate": 1606977331000
+            },
+            {
+                "id": 4230,
+                "deviceName": "南德电气20kv_PT100/1_CT500/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT500/5",
+                "innerVer": "v1.0",
+                "driverId": 11973,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14276"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1606977544000,
+                "updatedDate": 1606977591000
+            },
+            {
+                "id": 4231,
+                "deviceName": "变电站测温RTU规约测试",
+                "brand": "测试",
+                "model": "变电站测温RTU规约测试",
+                "innerVer": "v1.0",
+                "driverId": 11983,
+                "protocolId": 1270,
+                "driverName": "",
+                "driverProto": "ModbusRTU",
+                "confPathList": [
+                    "14125",
+                    "14286"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 377,
+                "parentDomainId": 0,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1606986147000,
+                "updatedDate": 1607586289000
+            },
+            {
+                "id": 4232,
+                "deviceName": "温州佳和104转发YC91_750/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_750/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11981,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14283"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1607414397000,
+                "updatedDate": 1607414438000
+            },
+            {
+                "id": 4233,
+                "deviceName": "温州佳和104转发YC91_1200/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_1200/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11985,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14287"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1607997233000,
+                "updatedDate": 1607997280000
+            },
+            {
+                "id": 4234,
+                "deviceName": "创力104转发YC78_450/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_450/5",
+                "innerVer": "v1.0",
+                "driverId": 11987,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14288"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1608086589000,
+                "updatedDate": 1608086633000
+            },
+            {
+                "id": 4235,
+                "deviceName": "温州佳和104转发YC91_100/5_PT100/1",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_100/5_PT100/1",
+                "innerVer": "v1.0",
+                "driverId": 11990,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14168",
+                    "14289"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1608351355000,
+                "updatedDate": 1608351563000
+            },
+            {
+                "id": 4236,
+                "deviceName": "温州佳和104转发YC91_1000/5_PT100/1",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_1000/5_PT100/1",
+                "innerVer": "v1.0",
+                "driverId": 11991,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14168",
+                    "14290"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1608351371000,
+                "updatedDate": 1608351615000
+            },
+            {
+                "id": 4237,
+                "deviceName": "南德电气20kv_PT100/1_CT40/5",
+                "brand": "创力",
+                "model": "南德电气20kv_PT100/1_CT40/5",
+                "innerVer": "v1.0",
+                "driverId": 11993,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14291"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1608358135000,
+                "updatedDate": 1608358173000
+            },
+            {
+                "id": 4238,
+                "deviceName": "创力104转发YC78_630/5",
+                "brand": "创力",
+                "model": "创力104转发YC78_630/5",
+                "innerVer": "v1.0",
+                "driverId": 11995,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14166",
+                    "14292"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1608513853000,
+                "updatedDate": 1608513908000
+            },
+            {
+                "id": 4239,
+                "deviceName": "温州佳和104转发YC91_200/5_PT100/1",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_200/5_PT100/1",
+                "innerVer": "v1.0",
+                "driverId": 11997,
+                "protocolId": 1308,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14168",
+                    "14293"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "TSKJ",
+                "createdDate": 1608794014000,
+                "updatedDate": 1608794133000
+            },
+            {
+                "id": 4240,
+                "deviceName": "温州佳和104转发YC91_300/5_水电",
+                "brand": "佳和",
+                "model": "温州佳和104转发YC91_300/5_水电",
+                "innerVer": "v1.0",
+                "driverId": 11999,
+                "protocolId": 1264,
+                "driverName": "",
+                "driverProto": "IEC104",
+                "confPathList": [
+                    "14104",
+                    "14294"
+                ],
+                "categoryId": 29,
+                "cimObjectTypeId": 227,
+                "domainId": 378,
+                "parentDomainId": 377,
+                "namespace": "1859febe5ce70000",
+                "owner": "shujun.wu",
+                "createdDate": 1610415670000,
+                "updatedDate": 1610415735000
+            }
+        ]
+    }
+    result = which_template(test, '南德电气', '400/5', '100/1')
+    print(result)
