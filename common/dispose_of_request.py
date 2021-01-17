@@ -11,6 +11,7 @@ from api_format import ContentTypeDisposition, Data, Headers
 import api_functions
 import logging
 import pprint
+import requests
 
 logging.basicConfig(filename='api_logging.log', level=logging.DEBUG,
                     format='%(asctime)s - [line:%(lineno)d] - %(levelname)s - %(message)s')
@@ -38,6 +39,15 @@ if __name__ == '__main__':
     for each_station in origin_data:
         STATION = each_station['站名']    # 站点名字
         siteID = each_station['siteID']     # 每个站点的siteID
+        ADDRESS = each_station['address']   # 站点对应的地址
+        EXCEL_ID = each_station['excelid']  # 站点对应的excel_id
+        SYNCHRONIZE_DICT = {
+            'station_name': STATION,
+            'address': ADDRESS,
+            'site_id': siteID,
+            'excel_id': EXCEL_ID,
+        }   # 这个字典是用于后期同步的
+        SYNCHRONIZE_DICT.setdefault('devices_list', None)
 
         exp = ContentTypeDisposition(body.edge_getallboxinfo(siteID), headers.headers_multipart)  # 创建getallboxinfo的请求体的实例
         st = exp.request_method_edge_getallboxinfo()     # 获得Edge中的盒子信息
@@ -175,6 +185,21 @@ if __name__ == '__main__':
                 else:
                     print(f'{each_box[0]}-盒子发布失败！错误代码是：')
                     print(publishbox_res.json())
+
+            # 发布完后就是要去做拓扑结构的导入了
+            SYNCHRONIZE_DICT['devices_list'] = new_list     # 首先把对应的设备字典填入同步字典
+            response = api_functions.synchronize_topo(SYNCHRONIZE_DICT)    # 把同步的事情全权交给函数处理
+            if str(response['code']) == '1':
+                print('模板上传成功！')
+            else:
+                print('模板上传失败，错误代码是：')
+                print(response)
+            sy = requests.get(f'http://122.228.156.194:8081/backend/platform/common/initMdmidBySite?siteId={siteID}')
+            if str(sy.json()['code']) == '1':
+                print('同步成功')
+            else:
+                print('同步失败，错误代码是：')
+                print(sy.json())
 
         else:
             print('该场站下有盒子')
