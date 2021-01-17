@@ -216,19 +216,15 @@ def which_link(port_num, port_list, start_num=0):
     return "104转发%d" % X
 
 
-def which_template(json_dict, manufacturer, CT, PT):
+def which_template(templates, manufacturer, CT, PT):
     """
     用输入的参数结合正则判定式来匹配到目标模板，当然要考虑到匹配不成功的情况该如何处理
-    :param json_dict: 输入的json字典格式的数据
+    :param templates: 输入id与模板名对应的元组列表
     :param manufacturer: 厂家信息，不可或缺
     :param CT: 电流互感器变比
     :param PT: 电压互感器变比
     :return: str
     """
-    templates = []
-    for elem in json_dict['data']:
-        templates.append((elem['id'], elem['deviceName']))  # 把每个模板名与其对应的id形成一个元组放到列表中
-    print(templates)
     if '南德电气' in manufacturer and PT != '1':
         # 南德电气20kv_PT200/1_CT600/5
         REGEX = re.compile(r'^(.*)(%s)(.*)(%s)(.*)(%s)$' % ('南德电气', PT, CT))  # 南德电气用的正则

@@ -36,6 +36,21 @@ with open('data.json', encoding='UTF-8') as fbj:
 if __name__ == '__main__':
     headers = Headers()
     body = Data()   # 这个示例里包含每个特定api操作的要求格式
+
+    # TODO: 先post请求getalldevicestype以获得内容，再用厂家名、CT、PT正则匹配得出结果
+    getalldevicetypes = ContentTypeDisposition(headers_=headers.headers_query_templates)  # 这个请求不需要带请求体
+    getalldevicetypes_res = getalldevicetypes.request_method_edge_getalldevicetypes()
+    templates = []
+    if getalldevicetypes_res.json()['retCode'] == 10000:
+        print('模板信息获得成功！')
+        for elem in getalldevicetypes_res.json()['data']:
+            templates.append((elem['id'], elem['deviceName']))  # 把每个模板名与其对应的id形成一个元组放到列表中
+        print(templates)
+    else:
+        print('模板信息获得失败！错误代码是：')
+        print(getalldevicetypes_res.json())
+        raise Exception('变比模板获得失败！')
+
     for each_station in origin_data:
         STATION = each_station['站名']    # 站点名字
         siteID = each_station['siteID']     # 每个站点的siteID
@@ -153,16 +168,7 @@ if __name__ == '__main__':
             pprint.pprint(new_list)     # 这个时候的new_list比较完全了
             # 连接添加完后开始选中已添加的设备
             for each_kit in new_list:
-                # TODO: 先post请求getalldevicestype以获得内容，再用厂家名、CT、PT正则匹配得出结果
-                getalldevicetypes = ContentTypeDisposition(headers_=headers.headers_query_templates)    # 这个请求不需要带请求体
-                getalldevicetypes_res = getalldevicetypes.request_method_edge_getalldevicetypes()
-                if getalldevicetypes_res.json()['retCode'] == 10000:
-                    print('模板信息获得成功！')
-                else:
-                    print('模板信息获得失败！错误代码是：')
-                    print(getalldevicetypes_res.json())
-                result = api_functions.which_template(
-                    getalldevicetypes_res.json(), each_kit['manufacturer'], each_kit['CT'], each_kit['PT'])
+                result = api_functions.which_template(templates, each_kit['manufacturer'], each_kit['CT'], each_kit['PT'])
                 if result == 'failed':
                     result = '4114'     # 匹配失败的话，就默认用 4114 温州电管家104转发YC78这个模板
                     logging.warning(f"站名：{STATION}，siteID：{siteID},它的- {each_kit['name']} -模板匹配失败！已选成默认模板")
