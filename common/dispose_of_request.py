@@ -72,21 +72,9 @@ if __name__ == '__main__':
             # 往场站信息里添加盒子
             new_list = api_relogic.add_devices_in_station_info(siteID, each_station, body, headers, logging)
 
-            # TODO: 去到Edge接入中新建盒子、新建连接（连接名字从104转发1开始算）、选设备及模板、最后点击发布
-            # 用set的办法来将port_list里删除重复项
-            box_set = set([(elem['ip'], elem['sn']) for elem in new_list])     # 现在box_set是个集合类型
-            for elem in box_set:   # 每个elem是一个元组
-                boxname = elem[0] + '盒子'
-                sn = elem[1]
-                addbox = ContentTypeDisposition(body.edge_addbox(siteID, boxname, sn), headers.headers_json)  # 这个用json
-                print('\n\n')
-                print(body.edge_addbox(siteID, boxname, sn))
-                addbox_res = addbox.request_method_edge_addbox()
-                if addbox_res.json()['retCode'] == 10000:
-                    print(boxname + ' 添加成功')
-                else:
-                    print(boxname + ' 添加失败，失败代码为：')
-                    print(addbox_res.json())
+            # 去到Edge接入中新建盒子
+            box_set = set([(elem['ip'], elem['sn']) for elem in new_list])  # 现在box_set是个集合类型
+            api_relogic.add_boxes_in_egde_access(siteID, body, headers, box_set, logging)   # 已新建完盒子
 
             # 添加完盒子后需要开始添加所有连接，需要端口号筛重
             port_set = set([elem['portnum'] for elem in new_list])  # 现在port_set中含有不重复的端口号
@@ -163,32 +151,31 @@ if __name__ == '__main__':
         else:
             print('该场站下有盒子')
             # TODO: 首先getallboxinfo，因为有盒子了嘛，然后去找其下的端口号——注意端口号只于连接有关，与盒子无关，故是去判断连接！！！
-            if len(aim['data'][0]['collectType']) == 0
+            if len(st.json()['data'][0]['collectList']) == 0:    # 说明盒子下无连接，则可以直接往场站信息中添加设备，然后后续操作
+                # 往场站信息里添加盒子，添加完成后返回了设备的信息
+                new_list = api_relogic.add_devices_in_station_info(siteID, each_station, body, headers, logging)
 
-            # 需要先请求一次childdetail来获得新旧设备以防止残留设备与已有设备名字重名带来的objectID无法区分
-            childdetail = ContentTypeDisposition(body.station_childdetail(siteID), headers.headers_multipart)
-            childdetail_res = childdetail.request_method_stationdetail_childdetail()
-            projid = childdetail_res.json()['data'][0]['objectID']  # 获得重要的projid
-            catid = childdetail_res.json()['data'][0]['categoryIDs'][0]
-            print('projid is ' + projid)
-            # TODO: 1遍历所有连接查看盒子下有无对应的端口号，若有则记录到日志中，让人手动去查具体情况；
+                # TODO: 场站信息里添加完设备之后，就开始Edge接入等——连接名从104转发1开始
+                already_exists_sn_list = [each_sn['boxSN'] for each_sn in st.json()['data']]  # 获得已有的盒子sn号列表
+                box_set = set([(elem['ip'], elem['sn']) for elem in new_list])  # 现在box_set是个集合类型
+                api_relogic.add_boxes_in_egde_access(
+                    siteID, body, headers, box_set, logging, already_exists_sn_list=already_exists_sn_list)
 
-            # TODO: 2遍历所有盒子查看盒子下有无对应的端口号，若无则去往场站信息中添加设备，并获得每个新添加的设备的objectID
+            else:   # 说明有连接，则去遍历连接，查看有无对应的端口号——连接名需要获得已有连接数量来变化
+                # 获得连接下的所有端口号的列表，函数会判断是否跳过已重复的端口号的设备
+                collect_portnum_list = [each_collect['attributes']['connIP'][-5:] for each_collect in st.json()['data'][0]['collectList']]
+                new_list = api_relogic.add_devices_in_station_info(
+                    siteID, each_station, body, headers, logging, collect_portnum_list=collect_portnum_list)
 
-            # TODO: 2.1查看Edge接入中无对应的SN号盒子
+                # TODO: 2.1遍历查看Edge接入中无对应的SN号盒子
+                already_exists_sn_list = [each_sn['boxSN'] for each_sn in st.json()['data']]    # 获得已有的盒子sn号列表
+                box_set = set([(elem['ip'], elem['sn']) for elem in new_list])  # 现在box_set是个集合类型
+                #
+                api_relogic.add_boxes_in_egde_access(
+                    siteID, body, headers, box_set, logging, already_exists_sn_list=already_exists_sn_list)
 
-            # TODO: 2.1.1若无，则去到Edge接入中新建盒子、新建连接（连接名字用遍历连接数+1来获得）、选设备及模板、最后点击发布
+                # TODO: 2.1.1若无，则去到Edge接入中新建盒子、新建连接（连接名字用遍历连接数+1来获得）、选设备及模板、最后点击发布
 
-            # TODO: 2.1.2若有，则去到Edge接入中对应的盒子下、新建连接（连接名字用遍历连接数+1来获得）、选设备及模板、最后点击发布
-        for each_device in each_station['信息']:
-            PORT_NUM = str(each_device['port_num'])  # 获得了端口号
-            KitName = str(each_device['device_name'])  # 设备名
-            Capacity = str(each_device['capacity'])  # 容量
-            RatedCurrent = str(each_device['rated_current'])  # 额定电流
-            DEVICE_CT = str(each_device['CT'])  # CT
-            DEVICE_PT = str(each_device['PT'])  # PT
-            DEVICE_MANUFACTURER = str(each_device['manufacturer'])
-            LOGIC_NUM = str(each_device['modbus'])  # 获得了对应的公共地址，即逻辑编号
+                # TODO: 2.1.2若有，则去到Edge接入中对应的盒子下、新建连接（连接名字用遍历连接数+1来获得）、选设备及模板、最后点击发布
 
-    # TODO: 在Edge连接中添加盒子
 logging.info('End of Program')
