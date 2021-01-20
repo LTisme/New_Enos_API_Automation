@@ -12,6 +12,7 @@ import pprint
 import json
 import re
 import requests
+import time     # 用来生成相应年月日名字 文件夹的
 from requests_toolbelt import MultipartEncoder
 
 
@@ -273,7 +274,10 @@ def synchronize_topo(info_dict):
     :return: str 创建的excel表的绝对路径名
     """
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
-    save_path = r'synchronization_excel_files/{}.xls'.format(info_dict['station_name'])
+    time_now = time.strftime("%Y-%m-%d", time.localtime())      # 获得当前的年月日
+    if not os.path.exists(r'synchronization_excel_files/{}'.format(time_now)):
+        os.makedirs(r'synchronization_excel_files/{}'.format(time_now))
+    save_path = r'synchronization_excel_files/{}/{}.xls'.format(time_now, info_dict['station_name'])
 
     def judge(name):
         """
@@ -281,9 +285,9 @@ def synchronize_topo(info_dict):
         :param name: 设备名字
         :return: bool
         """
-        possible_list = ['总开关', '总电流', '总进线', '总路', '进线', '发电', '红外', '水电']   # 这个列表暂时只能想到这么多
+        possible_list = ['总开关', '总电流', '总进线', '总路', '进线', '发电', '红外', '水电', '主回路', '主开关']   # 这个列表暂时只能想到这么多
         for elem in possible_list:
-            if elem in name:
+            if elem in name and '出线' not in name:   # 避免如 低压进线出线回路1 这样的设备名导致的误解
                 return True
         return False
 
