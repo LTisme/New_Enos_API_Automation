@@ -78,7 +78,7 @@ class ContentTypeDisposition(object):
             all_str += join_str.format(boundary, key, value)
         final_str = all_str + end_str
         final_str = final_str.replace("\'", "\"")   # 必不能缺失
-        print(final_str)    # 可在正式用的时候注释掉，出问题的时候打开
+        # print(final_str)    # 可在正式用的时候注释掉，出问题的时候打开
 
         return final_str
 

@@ -11,6 +11,9 @@ from api_format import ContentTypeDisposition, Data, Headers
 import api_functions
 import api_relogic  # 重构了逻辑函数
 import logging
+from multiprocessing import Pool, Manager, cpu_count     # 进程池用
+import time     # 计时用
+
 
 logging.basicConfig(filename='api_logging.log', level=logging.DEBUG,
                     format='%(asctime)s - [line:%(lineno)d] - %(levelname)s - %(message)s')
@@ -22,14 +25,18 @@ with open('data.json', encoding='UTF-8') as fbj:
     origin_data = json.load(fbj)      # 现在data就是想要的数据结构
 
 
-if __name__ == '__main__':
-    headers = Headers()
-    body = Data()   # 这个实例里包含每个特定api操作的要求格式
+headers = Headers()
+body = Data()   # 这个实例里包含每个特定api操作的要求格式
 
-    # 先post请求getalldevicestype以获得内容，再用厂家名、CT、PT正则匹配得出结果
-    templates = api_relogic.get_all_devices_type(headers, logging)
+# 先post请求getalldevicestype以获得内容，再用厂家名、CT、PT正则匹配得出结果
+templates = api_relogic.get_all_devices_type(headers, logging)
 
-    for each_station in origin_data:
+
+def worker(queue, index):
+    process_id = "Process-" + str(index)
+    print(process_id + " start!\n")
+    while not queue.empty():    # 任务队列只要不为空就会一直循环
+        each_station = queue.get(timeout=2)     # 从队列中取得任务
         STATION = each_station['站名']    # 站点名字
         siteID = each_station['siteID']     # 每个站点的siteID
         ADDRESS = each_station['address']   # 站点对应的地址
@@ -133,4 +140,26 @@ if __name__ == '__main__':
                 SYNCHRONIZE_DICT['devices_list'] = new_list  # 首先把对应的设备字典填入同步字典
                 api_relogic.synchronize_corresponding_station_with_template(siteID, SYNCHRONIZE_DICT, logging)  # 发布
 
+
+if __name__ == '__main__':
+    start_time = time.time()  # 开始时间
+
+    # 填充任务队列
+    manager = Manager()
+    work_queue = manager.Queue(len(origin_data))    # 有多少个站点就有多少个任务
+    for each_station in origin_data:    # 填充任务队列
+        work_queue.put(each_station)
+
+    # 创建非阻塞进程
+    max_ = 2 * cpu_count()  # 当前电脑核数×2 个进程数
+    pool = Pool(processes=max_)     # 提供指定数目的进程，当有新任务请求时，若进程池没满则需要
+    for i in range(max_):
+        pool.apply_async(func=worker, args=(work_queue, i))     # 创建非阻塞进程
+
+    print("Start processing...")
+    pool.close()    # 关闭进程池，关闭后pool不再接收新的请求
+    pool.join()     # 等待pool中所有子进程执行完成，必须放在close语句之后
+
+    end_time = time.time()  # 结束时间
+    print("All consumed time is ", end_time - start_time, " seconds.")
 logging.info('End of Program')
