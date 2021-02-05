@@ -11,7 +11,7 @@ from api_format import ContentTypeDisposition, Data, Headers
 import api_functions
 import api_relogic  # 重构了逻辑函数
 import logging
-from multiprocessing import Pool, Manager, cpu_count     # 进程池用
+import threading, queue
 import time     # 计时用
 
 
@@ -32,11 +32,24 @@ body = Data()   # 这个实例里包含每个特定api操作的要求格式
 templates = api_relogic.get_all_devices_type(headers, logging)
 
 
+class MyThread(threading.Thread):
+    def __init__(self, queue, index):
+        super(MyThread, self).__init__()
+        self.queue = queue
+        self.index = index
+
+    def run(self) -> None:  # 调用worker方法
+        try:
+            worker(self.queue, self.index)
+        except:
+            raise Exception("worker函数调用发生异常")
+
+
 def worker(queue, index):
-    process_id = "Process-" + str(index)
-    print(process_id + " start!\n")
+    thread_id = "Thread-" + str(index)
+    print(thread_id + " start!\n")
     while not queue.empty():    # 任务队列只要不为空就会一直循环
-        print(process_id + " get an assignment!\n")
+        print(thread_id + " gets an assignment!\n")
         each_station = queue.get(timeout=2)     # 从队列中取得任务
         STATION = each_station['站名']    # 站点名字
         siteID = each_station['siteID']     # 每个站点的siteID
@@ -146,21 +159,23 @@ if __name__ == '__main__':
     start_time = time.time()  # 开始时间
 
     # 填充任务队列
-    manager = Manager()
-    work_queue = manager.Queue(len(origin_data))    # 有多少个站点就有多少个任务
-    print(f"*****总共有{str(len(origin_data))}个任务*****")
+    queue_length = len(origin_data)
+    work_queue = queue.Queue(queue_length)    # 有多少个站点就有多少个任务
+    print(f"*****总共有{str(queue_length)}个任务*****")
     for each_station in origin_data:    # 填充任务队列
         work_queue.put(each_station)
 
-    # 创建非阻塞进程
-    max_ = 2 * cpu_count()  # 当前电脑核数×2 个进程数
-    pool = Pool(processes=max_)     # 提供指定数目的进程，当有新任务请求时，若进程池没满则需要
-    for i in range(max_):
-        pool.apply_async(func=worker, args=(work_queue, i))     # 创建非阻塞进程
+    # 创建新线程
+    thread_num = 10     # 自定义的线程数
+    threads = []    # 线程列表
+    for i in range(thread_num):
+        thread = MyThread(work_queue, i)
+        thread.start()
+        threads.append(thread)
 
-    print("Start processing...")
-    pool.close()    # 关闭进程池，关闭后pool不再接收新的请求
-    pool.join()     # 等待pool中所有子进程执行完成，必须放在close语句之后
+    # 等待所有线程完成
+    for each_thread in threads:
+        each_thread.join()
 
     end_time = time.time()  # 结束时间
     print("All consumed time is ", end_time - start_time, " seconds.")
