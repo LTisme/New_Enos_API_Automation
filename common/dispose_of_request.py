@@ -36,6 +36,7 @@ def worker(queue, index):
     process_id = "Process-" + str(index)
     print(process_id + " start!\n")
     while not queue.empty():    # 任务队列只要不为空就会一直循环
+        print(process_id + " get an assignment!\n")
         each_station = queue.get(timeout=2)     # 从队列中取得任务
         STATION = each_station['站名']    # 站点名字
         siteID = each_station['siteID']     # 每个站点的siteID
@@ -147,6 +148,7 @@ if __name__ == '__main__':
     # 填充任务队列
     manager = Manager()
     work_queue = manager.Queue(len(origin_data))    # 有多少个站点就有多少个任务
+    print(f"*****总共有{str(len(origin_data))}个任务*****")
     for each_station in origin_data:    # 填充任务队列
         work_queue.put(each_station)
 
